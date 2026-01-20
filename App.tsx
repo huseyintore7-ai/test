@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { Sparkles, Link as LinkIcon, Youtube, AlertCircle, Save, Scissors, Activity, Download, MessageCircle } from 'lucide-react';
+import { Sparkles, Link as LinkIcon, Youtube, AlertCircle, Save, Activity, Download, MessageCircle, Key } from 'lucide-react';
 import { analyzeVideoWithGemini } from './services/geminiService';
 import { AnalysisResult, AnalysisStatus, VideoData, ViralClip } from './types';
 import { VideoPlayer } from './components/VideoPlayer';
 import { ClipCard } from './components/ClipCard';
 
-// Using the key provided in the prompt
-const PROVIDED_API_KEY = "AIzaSyCJjaxvbNmtPkVi-lQKS63rkWxBBDOp5D4";
-
 const App: React.FC = () => {
   // State
+  const [apiKey, setApiKey] = useState<string>('');
   const [youtubeLink, setYoutubeLink] = useState<string>('');
   const [videoData, setVideoData] = useState<VideoData | null>(null);
   const [status, setStatus] = useState<AnalysisStatus>(AnalysisStatus.IDLE);
@@ -35,6 +33,11 @@ const App: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
+    if (!apiKey) {
+      setError("Lütfen Gemini API Anahtarınızı giriniz.");
+      return;
+    }
+
     const videoId = extractVideoId(youtubeLink);
     if (!videoId) {
       setError("Geçersiz YouTube bağlantısı. Lütfen kontrol edin.");
@@ -57,7 +60,7 @@ const App: React.FC = () => {
     setStatus(AnalysisStatus.ANALYZING);
 
     try {
-      const analysisData = await analyzeVideoWithGemini(PROVIDED_API_KEY, videoId, youtubeLink);
+      const analysisData = await analyzeVideoWithGemini(apiKey, videoId, youtubeLink);
       setResult(analysisData);
       setStatus(AnalysisStatus.COMPLETED);
       
@@ -145,48 +148,69 @@ Description: ${clip.description}
           <div className="md:col-span-1 space-y-6">
             
             {/* Input Section */}
-            <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 shadow-xl">
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-4">
-                <LinkIcon size={16} />
-                YouTube Video Bağlantısı
-              </label>
+            <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 shadow-xl space-y-6">
               
-              <div className="space-y-4">
+              {/* API Key Input */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
+                  <Key size={16} />
+                  Gemini API Anahtarı
+                </label>
                 <input 
-                  type="text" 
-                  value={youtubeLink}
-                  onChange={handleLinkChange}
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  type="password" 
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="AIzaSy..."
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 outline-none transition text-white placeholder-slate-600"
                 />
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Anahtarınız sadece tarayıcı hafızasında saklanır.
+                </p>
+              </div>
 
-                {/* Status Steps Visualization */}
-                {(status === AnalysisStatus.DOWNLOADING || status === AnalysisStatus.FETCHING_COMMENTS || status === AnalysisStatus.ANALYZING) && (
-                  <div className="space-y-2 mt-4">
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.DOWNLOADING ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
-                      <span>Video İndiriliyor...</span>
+              {/* YouTube Link Input */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
+                  <LinkIcon size={16} />
+                  YouTube Video Bağlantısı
+                </label>
+                <div className="space-y-4">
+                  <input 
+                    type="text" 
+                    value={youtubeLink}
+                    onChange={handleLinkChange}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 outline-none transition text-white placeholder-slate-600"
+                  />
+
+                  {/* Status Steps Visualization */}
+                  {(status === AnalysisStatus.DOWNLOADING || status === AnalysisStatus.FETCHING_COMMENTS || status === AnalysisStatus.ANALYZING) && (
+                    <div className="space-y-2 mt-4">
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.DOWNLOADING ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
+                        <span>Video İndiriliyor...</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.FETCHING_COMMENTS ? 'bg-yellow-500 animate-pulse' : status === AnalysisStatus.ANALYZING ? 'bg-green-500' : 'bg-slate-700'}`} />
+                        <span>Yorumlar Çekiliyor...</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.ANALYZING ? 'bg-yellow-500 animate-pulse' : 'bg-slate-700'}`} />
+                        <span>Gemini Analizi Yapılıyor...</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.FETCHING_COMMENTS ? 'bg-yellow-500 animate-pulse' : status === AnalysisStatus.ANALYZING || status === AnalysisStatus.COMPLETED ? 'bg-green-500' : 'bg-slate-700'}`} />
-                      <span>Yorumlar Çekiliyor...</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.ANALYZING ? 'bg-yellow-500 animate-pulse' : status === AnalysisStatus.COMPLETED ? 'bg-green-500' : 'bg-slate-700'}`} />
-                      <span>Gemini Analizi Yapılıyor...</span>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Action Button */}
             <button
               onClick={handleAnalyze}
-              disabled={!youtubeLink || status !== AnalysisStatus.IDLE && status !== AnalysisStatus.COMPLETED && status !== AnalysisStatus.ERROR}
+              disabled={!youtubeLink || !apiKey || status !== AnalysisStatus.IDLE && status !== AnalysisStatus.COMPLETED && status !== AnalysisStatus.ERROR}
               className={`
                 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg
-                ${!youtubeLink 
+                ${!youtubeLink || !apiKey
                   ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
                   : status !== AnalysisStatus.IDLE && status !== AnalysisStatus.COMPLETED && status !== AnalysisStatus.ERROR
                     ? 'bg-slate-800 text-slate-400 cursor-wait border border-slate-700'
